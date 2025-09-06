@@ -159,23 +159,24 @@
         <div id="end-screen" class="screen hidden">
              <div class="bg-black/20 border-2 border-yellow-400 rounded-2xl p-6 sm:p-12 max-w-4xl mx-auto shadow-2xl shadow-yellow-400/10">
                 <div class="trophy-icon text-yellow-400 mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" transform="scale(1.5) translate(-3.5, -4)"/></svg>
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto" viewBox="0 0 20 20" fill="currentColor"> <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 001.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/> <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/> </svg>
-                     <svg class="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                     <svg class="w-32 h-32 mx-auto" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 01-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 sm:w-32 sm:h-32 mx-auto" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>
+                    </svg>
                 </div>
                 <h1 id="winner-announcement" class="text-4xl sm:text-6xl font-bold mb-4"></h1>
                 <p class="text-xl sm:text-2xl mb-8 text-slate-300">Final Scores</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-left">
                     <div class="bg-teal-900/50 p-6 rounded-lg">
-                        <h2 id="final-team-a-name" class="text-2xl sm:text-3xl font-bold mb-2 text-teal-300"></h2>
-                        <p id="final-team-a-score" class="text-5xl sm:text-6xl font-bold mb-4"></p>
-                        <ul id="final-team-a-players" class="text-base sm:text-lg list-disc list-inside space-y-1"></ul>
+                        <h2 id="final-team-a-name" class="text-2xl sm:text-3xl font-bold mb-4 text-teal-300"></h2>
+                        <p id="final-team-a-score" class="text-5xl sm:text-6xl font-bold mb-6"></p>
+                        <h3 class="font-bold text-lg mb-2 text-slate-300">Players:</h3>
+                        <ul id="final-team-a-players" class="flex flex-wrap justify-start gap-2"></ul>
                     </div>
                      <div class="bg-pink-900/50 p-6 rounded-lg">
-                        <h2 id="final-team-b-name" class="text-2xl sm:text-3xl font-bold mb-2 text-pink-400"></h2>
-                        <p id="final-team-b-score" class="text-5xl sm:text-6xl font-bold mb-4"></p>
-                        <ul id="final-team-b-players" class="text-base sm:text-lg list-disc list-inside space-y-1"></ul>
+                        <h2 id="final-team-b-name" class="text-2xl sm:text-3xl font-bold mb-4 text-pink-400"></h2>
+                        <p id="final-team-b-score" class="text-5xl sm:text-6xl font-bold mb-6"></p>
+                        <h3 class="font-bold text-lg mb-2 text-slate-300">Players:</h3>
+                        <ul id="final-team-b-players" class="flex flex-wrap justify-start gap-2"></ul>
                     </div>
                 </div>
                 <button id="play-again-button" class="mt-8 bg-yellow-400 text-gray-800 font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-full text-lg sm:text-2xl shadow-lg transform hover:scale-105">Play Again</button>
@@ -385,10 +386,10 @@
             }
             document.getElementById('final-team-a-name').textContent = teams.a.name;
             document.getElementById('final-team-a-score').textContent = teams.a.score;
-            document.getElementById('final-team-a-players').innerHTML = teams.a.players.map(p => `<li>${p}</li>`).join('');
+            document.getElementById('final-team-a-players').innerHTML = teams.a.players.map(p => `<li class="bg-white/10 px-3 py-1 rounded-full text-sm text-slate-200">${p}</li>`).join('');
             document.getElementById('final-team-b-name').textContent = teams.b.name;
             document.getElementById('final-team-b-score').textContent = teams.b.score;
-            document.getElementById('final-team-b-players').innerHTML = teams.b.players.map(p => `<li>${p}</li>`).join('');
+            document.getElementById('final-team-b-players').innerHTML = teams.b.players.map(p => `<li class="bg-white/10 px-3 py-1 rounded-full text-sm text-slate-200">${p}</li>`).join('');
             startConfetti();
             winSound.triggerAttackRelease(['C4', 'E4', 'G4', 'C5'], '2n', Tone.now());
         }
