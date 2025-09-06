@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unscramble the Campus: Team Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #0f172a;
+            background: linear-gradient(135deg, #1e293b, #334155, #0f172a, #475569);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Responsive tile and font sizes */
+        .letter-tile, .drop-zone {
+            width: 3rem; height: 3rem; font-size: 1.25rem;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 0.5rem; user-select: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @media (min-width: 640px) {
+            .letter-tile, .drop-zone { width: 4rem; height: 4rem; font-size: 1.75rem; border-radius: 0.75rem;}
+        }
+        @media (min-width: 1024px) {
+            .letter-tile, .drop-zone { width: 5.5rem; height: 5.5rem; font-size: 2.25rem; }
+        }
+        
+        .letter-tile {
+            background-color: #ffffff; color: #1e293b;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08); 
+            font-weight: 700; cursor: pointer;
+        }
+        .letter-tile:active { transform: scale(0.95); }
+        .drop-zone {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+        }
+        .dragging {
+            opacity: 0.6; transform: scale(1.1) rotate(3deg);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.2); cursor: grabbing;
+        }
+        .drag-over {
+            background-color: rgba(199, 210, 254, 0.25); border-style: solid; transform: scale(1.05);
+        }
+        .correct {
+            background-color: #22c55e !important; color: white !important; animation: bounce 0.5s;
+            border-color: #22c55e;
+        }
+        @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+
+        .shake { animation: shake-horizontal 0.5s cubic-bezier(0.455, 0.030, 0.515, 0.955) both; }
+        @keyframes shake-horizontal {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+            20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+
+        .confetti {
+            position: absolute; width: 10px; height: 20px;
+            background-color: #f00; opacity: 0.9;
+            animation: fall 5s linear infinite; z-index: 1000;
+        }
+        @keyframes fall { to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+        
+        .screen { transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; }
+        .hidden { opacity: 0; transform: scale(0.95); pointer-events: none; position: absolute; }
+        
+        .input-field {
+            background-color: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2);
+            color: white; border-radius: 0.5rem; transition: all 0.2s;
+        }
+        .input-field:focus { background-color: rgba(255,255,255,0.1); border-color: #a78bfa; ring: 0; }
+        ::placeholder { color: rgba(255,255,255,0.4); }
+        
+        .team-a-active { border-color: #2dd4bf; box-shadow: 0 0 25px rgba(45, 212, 191, 0.5); }
+        .team-b-active { border-color: #f472b6; box-shadow: 0 0 25px rgba(244, 114, 182, 0.5); }
+        
+        .player-list { max-height: 150px; overflow-y: auto; padding-right: 0.5rem; }
+        .player-list::-webkit-scrollbar { width: 8px; }
+        .player-list::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
+        .player-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+        .player-list::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
+        
+        .disabled\:opacity-50 { cursor: not-allowed; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center text-white p-2 sm:p-4 overflow-y-auto">
+
+    <div id="game-container" class="w-full max-w-7xl mx-auto text-center relative">
+
+        <!-- Setup Screen -->
+        <div id="setup-screen" class="screen">
+            <h1 class="text-4xl sm:text-5xl md:text-7xl font-bold mb-2">Unscramble the Campus</h1>
+            <p class="text-lg sm:text-xl md:text-2xl mb-8 text-slate-300">A Team Challenge!</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-left">
+                <div class="bg-black/20 p-6 rounded-xl border border-white/10">
+                    <h2 class="text-3xl font-bold mb-4 text-teal-300">Team A</h2>
+                    <input type="text" id="team-a-name" placeholder="Enter Team A Name" class="w-full p-3 mb-4 text-lg input-field" value="Titans">
+                    <div id="team-a-players" class="space-y-2 mb-4 player-list">
+                        <input type="text" placeholder="Professor 1 Name" class="w-full p-2 input-field player-input-a">
+                    </div>
+                    <button onclick="addPlayer('a')" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition-transform hover:scale-105">Add Player</button>
+                </div>
+                <div class="bg-black/20 p-6 rounded-xl border border-white/10">
+                    <h2 class="text-3xl font-bold mb-4 text-pink-400">Team B</h2>
+                    <input type="text" id="team-b-name" placeholder="Enter Team B Name" class="w-full p-3 mb-4 text-lg input-field" value="Warriors">
+                     <div id="team-b-players" class="space-y-2 mb-4 player-list">
+                        <input type="text" placeholder="Professor 1 Name" class="w-full p-2 input-field player-input-b">
+                    </div>
+                    <button onclick="addPlayer('b')" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-lg transition-transform hover:scale-105">Add Player</button>
+                </div>
+            </div>
+            <button id="start-game-button" class="mt-8 bg-yellow-400 text-gray-800 font-bold py-4 px-8 rounded-full text-xl sm:text-2xl shadow-lg transform hover:scale-105 transition-transform">Start Challenge!</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen hidden w-full">
+            <div id="progress-bar-container" class="w-full bg-black/20 rounded-full h-4 mb-4 mx-auto max-w-2xl">
+                <div id="progress-bar" class="bg-violet-500 h-4 rounded-full transition-all duration-500"></div>
+            </div>
+            <div id="turn-indicator" class="mb-4 transition-all duration-500">
+                <h2 id="current-player-turn" class="text-3xl sm:text-4xl font-bold"></h2>
+                <p class="text-base sm:text-lg text-slate-300">Unscramble the building name!</p>
+            </div>
+            
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <div id="team-a-score-display" class="bg-black/20 p-4 rounded-lg w-full md:w-1/3 transition-all duration-500 border-2 border-transparent">
+                    <h3 id="team-a-score-name" class="text-xl sm:text-2xl font-bold text-teal-300"></h3>
+                    <p id="team-a-score" class="text-3xl sm:text-4xl font-bold">0</p>
+                </div>
+                <div id="timer" class="text-4xl sm:text-5xl font-bold bg-white/10 px-6 py-3 rounded-lg order-first md:order-none">02:00</div>
+                <div id="team-b-score-display" class="bg-black/20 p-4 rounded-lg w-full md:w-1/3 transition-all duration-500 border-2 border-transparent">
+                    <h3 id="team-b-score-name" class="text-xl sm:text-2xl font-bold text-pink-400"></h3>
+                    <p id="team-b-score" class="text-3xl sm:text-4xl font-bold">0</p>
+                </div>
+            </div>
+
+            <div id="answer-container" class="flex flex-wrap gap-1 sm:gap-2 justify-center mb-6 sm:mb-8 min-h-[4rem] sm:min-h-[5rem] md:min-h-[7rem]"></div>
+            <div id="tiles-container" class="flex flex-wrap gap-1 sm:gap-2 justify-center bg-black/20 p-2 sm:p-4 rounded-xl min-h-[4rem] sm:min-h-[5rem] md:min-h-[7rem]"></div>
+            
+            <div class="mt-6 sm:mt-8 flex justify-center gap-2 sm:gap-4">
+                <button id="hint-button" class="bg-purple-600 text-white font-bold py-3 px-4 sm:px-6 rounded-full text-base sm:text-lg shadow-md hover:bg-purple-700 transition-colors disabled:opacity-50">Hint (-5 Pts)</button>
+                <button id="skip-button" class="bg-orange-500 text-white font-bold py-3 px-4 sm:px-6 rounded-full text-base sm:text-lg shadow-md hover:bg-orange-600 transition-colors">Give Up</button>
+            </div>
+        </div>
+
+        <!-- End Screen -->
+        <div id="end-screen" class="screen hidden">
+             <div class="bg-black/20 border-2 border-yellow-400 rounded-2xl p-6 sm:p-12 max-w-4xl mx-auto shadow-2xl shadow-yellow-400/10">
+                <div class="trophy-icon text-yellow-400 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" transform="scale(1.5) translate(-3.5, -4)"/></svg>
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto" viewBox="0 0 20 20" fill="currentColor"> <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 001.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/> <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/> </svg>
+                     <svg class="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                     <svg class="w-32 h-32 mx-auto" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 01-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                </div>
+                <h1 id="winner-announcement" class="text-4xl sm:text-6xl font-bold mb-4"></h1>
+                <p class="text-xl sm:text-2xl mb-8 text-slate-300">Final Scores</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-left">
+                    <div class="bg-teal-900/50 p-6 rounded-lg">
+                        <h2 id="final-team-a-name" class="text-2xl sm:text-3xl font-bold mb-2 text-teal-300"></h2>
+                        <p id="final-team-a-score" class="text-5xl sm:text-6xl font-bold mb-4"></p>
+                        <ul id="final-team-a-players" class="text-base sm:text-lg list-disc list-inside space-y-1"></ul>
+                    </div>
+                     <div class="bg-pink-900/50 p-6 rounded-lg">
+                        <h2 id="final-team-b-name" class="text-2xl sm:text-3xl font-bold mb-2 text-pink-400"></h2>
+                        <p id="final-team-b-score" class="text-5xl sm:text-6xl font-bold mb-4"></p>
+                        <ul id="final-team-b-players" class="text-base sm:text-lg list-disc list-inside space-y-1"></ul>
+                    </div>
+                </div>
+                <button id="play-again-button" class="mt-8 bg-yellow-400 text-gray-800 font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-full text-lg sm:text-2xl shadow-lg transform hover:scale-105">Play Again</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <script>
+        // --- DOM Elements ---
+        const setupScreen = document.getElementById('setup-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const endScreen = document.getElementById('end-screen');
+        const startGameButton = document.getElementById('start-game-button');
+        const playAgainButton = document.getElementById('play-again-button');
+        const tilesContainer = document.getElementById('tiles-container');
+        const answerContainer = document.getElementById('answer-container');
+        const timerDisplay = document.getElementById('timer');
+        const hintButton = document.getElementById('hint-button');
+        const skipButton = document.getElementById('skip-button');
+        const progressBar = document.getElementById('progress-bar');
+
+        // --- Game Data & State ---
+        const buildingNames = ['Vishwakarma', 'Ganga', 'Abraham', 'Agastya', 'Dnyaneshwar', 'Jamdagini', 'Vivekananda', 'Vashistha', 'Vishwaminara', 'Kashyap', 'Aaryabhatka', 'Dhruv', 'Prayad', 'Mahaved', 'Kabir', 'Vyas', 'Dronacharya'];
+        const BASE_TIME = 45; const TIME_PER_LETTER = 5;
+        const HINT_COST = 5;
+        
+        let words = []; let currentWordIndex = 0; let currentWord = '';
+        let timerInterval; let timeLeft; let draggedTile = null;
+        let teams = { a: { name: '', players: [], score: 0 }, b: { name: '', players: [], score: 0 } };
+        let currentTeamKey = 'a';
+
+        // --- Sound Effects ---
+        let successSound, snapSound, errorSound, winSound, passSound;
+        
+        function setupSounds() {
+            if (typeof Tone === 'undefined' || (Tone.context && Tone.context.state === 'running')) return;
+            Tone.start();
+            successSound = new Tone.Synth({ oscillator: { type: 'sine' } }).toDestination();
+            snapSound = new Tone.Synth({ oscillator: { type: 'triangle' }, volume: -12 }).toDestination();
+            errorSound = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.01, decay: 0.3 } }).toDestination();
+            passSound = new Tone.Synth({ oscillator: { type: 'sawtooth' }, volume: -8 }).toDestination();
+            winSound = new Tone.PolySynth(Tone.Synth).toDestination();
+        }
+
+        const shuffleString = s => { let a=s.split(''), n=a.length; for(let i=n-1; i>0; i--){ let j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } const sh=a.join(''); return sh===s?shuffleString(s):sh; };
+        const shuffleArray = a => { for(let i=a.length-1; i>0; i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+
+        function switchScreen(fromEl, toEl) {
+            fromEl.classList.add('hidden');
+            toEl.classList.remove('hidden');
+        }
+
+        function addPlayer(teamKey) {
+            const container = document.getElementById(`team-${teamKey}-players`);
+            const playerCount = container.children.length + 1;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Professor ${playerCount} Name`;
+            input.className = `w-full p-2 input-field player-input-${teamKey}`;
+            container.appendChild(input);
+            input.focus();
+        }
+
+        function handleSetupSubmit() {
+            teams.a.name = document.getElementById('team-a-name').value || 'Team A';
+            teams.b.name = document.getElementById('team-b-name').value || 'Team B';
+            teams.a.players = Array.from(document.querySelectorAll('.player-input-a')).map(i => i.value).filter(Boolean);
+            teams.b.players = Array.from(document.querySelectorAll('.player-input-b')).map(i => i.value).filter(Boolean);
+            if (teams.a.players.length === 0 || teams.b.players.length === 0) {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+                modal.innerHTML = `<div class="bg-slate-800 p-8 rounded-lg text-center shadow-lg"><p class="text-xl mb-4">Both teams need at least one player!</p><button class="bg-red-500 px-4 py-2 rounded">OK</button></div>`;
+                document.body.appendChild(modal);
+                modal.querySelector('button').onclick = () => modal.remove();
+                return;
+            }
+            startGame();
+        }
+
+        // --- Tapping and Dragging Logic ---
+        function handleTileClick(e) {
+            const tile = this;
+            const parent = tile.parentNode;
+            if (parent.id === 'tiles-container') {
+                const firstEmptyZone = Array.from(answerContainer.children).find(zone => !zone.hasChildNodes());
+                if (firstEmptyZone) {
+                    firstEmptyZone.appendChild(tile);
+                    snapSound.triggerAttackRelease('C5', '16n', Tone.now());
+                }
+            } else { 
+                tilesContainer.appendChild(tile);
+                snapSound.triggerAttackRelease('A4', '16n', Tone.now());
+            }
+            checkWord();
+        }
+        function handleDragStart(e) { draggedTile=this; setTimeout(()=>this.classList.add('dragging'),0); e.dataTransfer.effectAllowed='move'; }
+        function handleDragEnd() { this.classList.remove('dragging'); draggedTile=null; }
+        function handleDragOver(e) { e.preventDefault(); }
+        function handleDragEnter(e) { e.preventDefault(); this.classList.add('drag-over'); }
+        function handleDragLeave() { this.classList.remove('drag-over'); }
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            if (!draggedTile) return;
+            const targetIsTile = this.classList.contains('letter-tile');
+            const targetIsZone = this.classList.contains('drop-zone');
+            if (targetIsZone && !this.hasChildNodes()) { this.appendChild(draggedTile); } 
+            else if (targetIsTile) {
+                const sourceContainer = draggedTile.parentNode;
+                const targetContainer = this.parentNode;
+                targetContainer.appendChild(draggedTile);
+                sourceContainer.appendChild(this);
+            } 
+            else if (this.id === 'tiles-container') { this.appendChild(draggedTile); }
+            
+            snapSound.triggerAttackRelease('C5', '16n', Tone.now());
+            checkWord();
+        }
+
+        // --- Game Flow ---
+        function startGame() {
+            setupSounds();
+            currentWordIndex = 0; words = shuffleArray([...buildingNames]);
+            teams.a.score = 0; teams.b.score = 0; currentTeamKey = 'a';
+            switchScreen(setupScreen, gameScreen);
+            document.getElementById('team-a-score-name').textContent = teams.a.name;
+            document.getElementById('team-b-score-name').textContent = teams.b.name;
+            updateScoreDisplay();
+            loadNextWord();
+        }
+
+        function nextTurn() {
+            currentTeamKey = currentTeamKey === 'a' ? 'b' : 'a';
+            currentWordIndex++;
+            loadNextWord();
+        }
+
+        function loadNextWord() {
+            if (currentWordIndex >= words.length) { showScoreboard(); return; }
+            updateProgressBar();
+            currentWord = words[currentWordIndex].toUpperCase();
+            const scrambledWord = shuffleString(currentWord);
+
+            tilesContainer.innerHTML = ''; answerContainer.innerHTML = '';
+            scrambledWord.split('').forEach(letter => {
+                const tile = document.createElement('div');
+                tile.className = 'letter-tile'; tile.textContent = letter; tile.draggable = true;
+                tile.addEventListener('click', handleTileClick);
+                tile.addEventListener('dragstart', handleDragStart);
+                tile.addEventListener('dragend', handleDragEnd);
+                tile.addEventListener('drop', handleDrop);
+                tile.addEventListener('dragover', handleDragOver);
+                tilesContainer.appendChild(tile);
+            });
+            for (let i = 0; i < currentWord.length; i++) {
+                const dropZone = document.createElement('div');
+                dropZone.className = 'drop-zone';
+                dropZone.addEventListener('dragover', handleDragOver);
+                dropZone.addEventListener('dragenter', handleDragEnter);
+                dropZone.addEventListener('dragleave', handleDragLeave);
+                dropZone.addEventListener('drop', handleDrop);
+                answerContainer.appendChild(dropZone);
+            }
+            tilesContainer.addEventListener('dragover', handleDragOver);
+            tilesContainer.addEventListener('drop', handleDrop);
+            updateTurnIndicator();
+            startTimer();
+        }
+        
+        function checkWord() {
+            const dropZones = Array.from(answerContainer.children);
+            const allZonesFilled = dropZones.every(zone => zone.hasChildNodes());
+            if (!allZonesFilled) return;
+
+            const currentAttempt = dropZones.map(zone => zone.firstChild.textContent).join('');
+            
+            if (currentAttempt === currentWord) {
+                clearInterval(timerInterval);
+                teams[currentTeamKey].score += 10 + Math.floor(timeLeft / 10);
+                updateScoreDisplay();
+                dropZones.forEach(zone => zone.firstChild.classList.add('correct'));
+                successSound.triggerAttackRelease('G5', '8n', Tone.now());
+                setTimeout(nextTurn, 1500);
+            } else {
+                answerContainer.classList.add('shake');
+                errorSound.triggerAttackRelease('C3', '8n', Tone.now());
+                setTimeout(() => answerContainer.classList.remove('shake'), 500);
+            }
+        }
+        
+        function skipTurn() {
+            passSound.triggerAttackRelease('A3', '4n', Tone.now());
+            clearInterval(timerInterval);
+            nextTurn();
+        }
+
+        function showScoreboard() {
+            switchScreen(gameScreen, endScreen);
+            const winner = teams.a.score > teams.b.score ? teams.a : (teams.b.score > teams.a.score ? teams.b : null);
+            document.getElementById('winner-announcement').textContent = winner ? `${winner.name} Wins!` : "It's a Tie!";
+            if (winner) {
+                const winnerKey = winner === teams.a ? 'a' : 'b';
+                document.querySelector('#end-screen .trophy-icon').className = `trophy-icon mb-4 ${winnerKey === 'a' ? 'text-teal-300' : 'text-pink-400'}`;
+            } else {
+                 document.querySelector('#end-screen .trophy-icon').className = `trophy-icon mb-4 text-yellow-400`;
+            }
+            document.getElementById('final-team-a-name').textContent = teams.a.name;
+            document.getElementById('final-team-a-score').textContent = teams.a.score;
+            document.getElementById('final-team-a-players').innerHTML = teams.a.players.map(p => `<li>${p}</li>`).join('');
+            document.getElementById('final-team-b-name').textContent = teams.b.name;
+            document.getElementById('final-team-b-score').textContent = teams.b.score;
+            document.getElementById('final-team-b-players').innerHTML = teams.b.players.map(p => `<li>${p}</li>`).join('');
+            startConfetti();
+            winSound.triggerAttackRelease(['C4', 'E4', 'G4', 'C5'], '2n', Tone.now());
+        }
+        
+        function updateProgressBar() {
+            const progress = (currentWordIndex / words.length) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('team-a-score').textContent = teams.a.score;
+            document.getElementById('team-b-score').textContent = teams.b.score;
+        }
+
+        function updateTurnIndicator() {
+            document.getElementById('current-player-turn').textContent = `${teams[currentTeamKey].name}'s Turn`;
+            const teamAdisplay = document.getElementById('team-a-score-display');
+            const teamBdisplay = document.getElementById('team-b-score-display');
+            if (currentTeamKey === 'a') {
+                teamAdisplay.classList.add('team-a-active');
+                teamBdisplay.classList.remove('team-b-active');
+            } else {
+                teamBdisplay.classList.add('team-b-active');
+                teamAdisplay.classList.remove('team-a-active');
+            }
+        }
+        
+        function startTimer() {
+            clearInterval(timerInterval);
+            const totalTime = BASE_TIME + (currentWord.length * TIME_PER_LETTER);
+            timeLeft = totalTime;
+            hintButton.disabled = false;
+            const updateDisplay = () => {
+                const minutes = Math.floor(timeLeft/60).toString().padStart(2,'0');
+                const seconds = (timeLeft%60).toString().padStart(2,'0');
+                timerDisplay.textContent = `${minutes}:${seconds}`;
+            };
+            updateDisplay();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+                if (timeLeft <= 0) {
+                    errorSound.triggerAttackRelease('C3', '4n', Tone.now());
+                    skipTurn();
+                }
+            }, 1000);
+        }
+        
+        function showHint() {
+            if (teams[currentTeamKey].score < HINT_COST) {
+                hintButton.classList.add('shake');
+                setTimeout(() => hintButton.classList.remove('shake'), 500);
+                return;
+            }
+            teams[currentTeamKey].score -= HINT_COST;
+            updateScoreDisplay();
+            const dropZones = Array.from(answerContainer.children);
+            const incorrectIndices = [];
+            dropZones.forEach((zone, i) => { if (!zone.hasChildNodes() || zone.firstChild.textContent !== currentWord[i]) { incorrectIndices.push(i); } });
+            if (incorrectIndices.length === 0) { hintButton.disabled = true; return; }
+            const shuffledIncorrectIndices = shuffleArray([...incorrectIndices]);
+            const hintsToGive = Math.max(1, Math.floor(currentWord.length * 0.3));
+            const indicesToCorrect = shuffledIncorrectIndices.slice(0, hintsToGive);
+            indicesToCorrect.forEach(index => {
+                const correctLetter = currentWord[index];
+                const targetZone = dropZones[index];
+                let tileToMove = Array.from(document.querySelectorAll('.letter-tile')).find(t => {
+                    if (t.textContent !== correctLetter) return false;
+                    const parent = t.parentNode;
+                    return parent.id === 'tiles-container' || (parent.classList.contains('drop-zone') && currentWord[dropZones.indexOf(parent)] !== t.textContent);
+                });
+                if (!tileToMove) return;
+                if (targetZone.hasChildNodes() && targetZone.firstChild !== tileToMove) { tilesContainer.appendChild(targetZone.firstChild); }
+                targetZone.appendChild(tileToMove);
+            });
+            snapSound.triggerAttackRelease('A5', '8n', Tone.now());
+            checkWord();
+            hintButton.disabled = true;
+        }
+
+        function startConfetti() {
+            const container = document.body;
+            for (let i = 0; i < 150; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random()*100+'vw'; c.style.animationDelay = Math.random()*3+'s';
+                c.style.backgroundColor = `hsl(${Math.random()*360}, 90%, 60%)`;
+                c.style.transform = `rotate(${Math.random()*360}deg)`;
+                container.appendChild(c);
+                setTimeout(()=>c.remove(), 5000);
+            }
+        }
+
+        startGameButton.addEventListener('click', handleSetupSubmit);
+        playAgainButton.addEventListener('click', () => switchScreen(endScreen, setupScreen));
+        hintButton.addEventListener('click', showHint);
+        skipButton.addEventListener('click', skipTurn);
+    </script>
+</body>
+</html>
+
